@@ -948,7 +948,11 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if promo_instance:
             selected_promotion = promo_instance.promotion
 
-        valid_until = today if membership.classes_per_month == 0 else today + timedelta(days=30)
+        # Todos los pagos se registran con 30 días de vigencia a partir de la fecha de pago.
+        # Anteriormente, los planes con ``classes_per_month == 0`` se marcaban
+        # con vigencia del mismo día, lo cual provocaba vencimientos
+        # inmediatos y notificaciones erróneas.
+        valid_until = today + timedelta(days=30)
 
         payment = Payment.objects.create(
             client_id=client_id,
