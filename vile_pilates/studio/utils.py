@@ -1,8 +1,15 @@
-from django.db.models import Sum
-from .models import Payment, MonthlyRevenue
+from decimal import Decimal
+from datetime import datetime, timedelta
+import pandas as pd
+import unicodedata
+
+from django.db import models, transaction
+from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
-from django.db.models import Count
-from django.db import models
+from django.utils import timezone
+
+from .models import Membership, Payment, MonthlyRevenue
+from accounts.models import Client
 
 def recalculate_monthly_revenue(year, month):
     from .models import Payment, MonthlyRevenue, Venta
@@ -115,17 +122,6 @@ def recalculate_all_monthly_revenue():
             })
 
     return results
-
-from decimal import Decimal
-from datetime import datetime, timedelta
-import pandas as pd, unicodedata
-
-from django.db import transaction
-from django.utils import timezone
-
-from studio.models import Membership, Payment
-from accounts.models import Client
-
 
 def import_payments_from_excel(file_obj) -> dict:
     """
