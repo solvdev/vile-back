@@ -4,7 +4,6 @@ from django.conf import settings
 from django.utils import timezone
 from babel.dates import format_date
 from ...models import Booking
-from calendar import monthrange
 from decimal import Decimal
 
 
@@ -30,15 +29,9 @@ def send_booking_confirmation_email(booking):
 
     if client_obj.active_membership:
         plan = client_obj.active_membership
-        start_month = today.replace(day=1)
-        last_day = monthrange(today.year, today.month)[1]
-        end_month = today.replace(day=last_day)
+        from studio.utils import count_valid_monthly_bookings
 
-        bookings_this_month = Booking.objects.filter(
-            client=client_obj,
-            class_date__range=[start_month, end_month],
-            status='active'
-        ).count()
+        bookings_this_month = count_valid_monthly_bookings(client_obj)
 
         remaining = plan.classes_per_month - bookings_this_month
         extra_info = (

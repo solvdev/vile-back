@@ -1,8 +1,31 @@
 from django.db.models import Sum
 from .models import Payment, MonthlyRevenue
+from django.utils import timezone
+from datetime import timedelta
 from django.db.models.functions import TruncMonth
 from django.db.models import Count
 from django.db import models
+
+# -----------------------------------------------------------------------------
+# Helper utilities
+
+def count_valid_monthly_bookings(client, reference_date=None):
+    """Return number of bookings for the client in the month excluding no-shows."""
+    from studio.models import Booking
+
+    ref = reference_date or timezone.now().date()
+    start = ref.replace(day=1)
+    end = (start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    return (
+        Booking.objects.filter(
+            client=client,
+            class_date__range=[start, end],
+            status="active",
+        )
+        .exclude(attendance_status="no_show")
+        .count()
+    )
 
 def recalculate_monthly_revenue(year, month):
     from .models import Payment, MonthlyRevenue, Venta

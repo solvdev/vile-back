@@ -258,15 +258,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         latest_payment = Payment.objects.filter(client=client).order_by('-date_paid').first()
         if latest_payment:
             membership_plan = latest_payment.membership
-            today = timezone.now().date()
-            start_of_month = today.replace(day=1)
-            end_of_month = (start_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            from .utils import count_valid_monthly_bookings
 
-            monthly_bookings = Booking.objects.filter(
-                client=client,
-                class_date__range=[start_of_month, end_of_month],
-                status='active'
-            ).count()
+            monthly_bookings = count_valid_monthly_bookings(client)
 
             if latest_payment.promotion_id:
                 promotion = latest_payment.promotion
