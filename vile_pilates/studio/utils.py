@@ -217,10 +217,11 @@ def import_payments_from_excel(file_obj) -> dict:
                     continue
 
                 # ---------- vigencia ----------
-                if not membership.classes_per_month:  # None o 0  ⇒  ilimitado-por-día
-                    valid_until = pay_dt.date()
-                else:
-                    valid_until = pay_dt.date() + timedelta(days=30)
+                # Todos los pagos importados deben tener una vigencia de 30 días
+                # a partir de la fecha de pago. Antes se asignaba la fecha del
+                # mismo día cuando ``classes_per_month`` era 0 o ``None`` y eso
+                # provocaba que las suscripciones caducaran inmediatamente.
+                valid_until = pay_dt.date() + timedelta(days=30)
 
                 # ---------- evitar duplicados ----------
                 dup = Payment.objects.filter(
