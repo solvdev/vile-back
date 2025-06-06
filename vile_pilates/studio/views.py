@@ -258,15 +258,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         latest_payment = Payment.objects.filter(client=client).order_by('-date_paid').first()
         if latest_payment:
             membership_plan = latest_payment.membership
-            today = timezone.now().date()
-            start_of_month = today.replace(day=1)
-            end_of_month = (start_of_month + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+            from .utils import count_valid_monthly_bookings
 
-            monthly_bookings = Booking.objects.filter(
-                client=client,
-                class_date__range=[start_of_month, end_of_month],
-                status='active'
-            ).count()
+            monthly_bookings = count_valid_monthly_bookings(client)
 
             if latest_payment.promotion_id:
                 promotion = latest_payment.promotion
@@ -948,7 +942,11 @@ class PaymentViewSet(viewsets.ModelViewSet):
         if promo_instance:
             selected_promotion = promo_instance.promotion
 
-        valid_until = today if membership.classes_per_month == 0 else today + timedelta(days=30)
+        # Todos los pagos se registran con 30 días de vigencia a partir de la fecha de pago.
+        # Anteriormente, los planes con ``classes_per_month == 0`` se marcaban
+        # con vigencia del mismo día, lo cual provocaba vencimientos
+        # inmediatos y notificaciones erróneas.
+        valid_until = today + timedelta(days=30)
 
         payment = Payment.objects.create(
             client_id=client_id,

@@ -1,3 +1,4 @@
+
 from decimal import Decimal
 from datetime import datetime, timedelta
 import pandas as pd
@@ -5,11 +6,38 @@ import unicodedata
 
 from django.db import models, transaction
 from django.db.models import Count, Sum
+
+from django.db.models import Sum
+from .models import Payment, MonthlyRevenue
+from django.utils import timezone
+from datetime import timedelta
+
 from django.db.models.functions import TruncMonth
 from django.utils import timezone
 
 from .models import Membership, Payment, MonthlyRevenue
 from accounts.models import Client
+
+# -----------------------------------------------------------------------------
+# Helper utilities
+
+def count_valid_monthly_bookings(client, reference_date=None):
+    """Return number of bookings for the client in the month excluding no-shows."""
+    from studio.models import Booking
+
+    ref = reference_date or timezone.now().date()
+    start = ref.replace(day=1)
+    end = (start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+
+    return (
+        Booking.objects.filter(
+            client=client,
+            class_date__range=[start, end],
+            status="active",
+        )
+        .exclude(attendance_status="no_show")
+        .count()
+    )
 
 def recalculate_monthly_revenue(year, month):
     from .models import Payment, MonthlyRevenue, Venta
@@ -213,10 +241,11 @@ def import_payments_from_excel(file_obj) -> dict:
                     continue
 
                 # ---------- vigencia ----------
-                if not membership.classes_per_month:  # None o 0  ⇒  ilimitado-por-día
-                    valid_until = pay_dt.date()
-                else:
-                    valid_until = pay_dt.date() + timedelta(days=30)
+                # Todos los pagos importados deben tener una vigencia de 30 días
+                # a partir de la fecha de pago. Antes se asignaba la fecha del
+                # mismo día cuando ``classes_per_month`` era 0 o ``None`` y eso
+                # provocaba que las suscripciones caducaran inmediatamente.
+                valid_until = pay_dt.date() + timedelta(days=30)
 
                 # ---------- evitar duplicados ----------
                 dup = Payment.objects.filter(
